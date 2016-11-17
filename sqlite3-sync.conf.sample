@@ -1,0 +1,11 @@
+#!/bin/sh
+
+# Remote slave (connect via SSH)
+HOST="slave.example.com"
+PORT=22
+
+MASTER_CACHE_DIR="$SCRIPT_DIR/cache"
+SLAVE_CACHE_DIR="~/sqlite3-sync/cache"
+MASTER_DB_DIR="/var/db/rspamd"
+SLAVE_DB_DIR="/var/db/rspamd"
+DB_LIST="bayes.ham.sqlite bayes.spam.sqlite fuzzy.db"

@@ -1,0 +1,36 @@
+#!/bin/sh
+
+SCRIPT_DIR=`dirname $0`
+cd $SCRIPT_DIR || {
+    echo "Error! Cannot change directory to $SCRIPT_DIR"
+    exit 1
+}
+
+CONF_FILE="./sqlite3-sync.conf"
+
+# Load configuration
+[ -r $CONF_FILE ] && . $CONF_FILE || {
+    printf >&2 "\nCannot load configuration file $CONF_FILE\n"
+    exit 1
+}
+
+export RSYNC_RSH="ssh -p $PORT -o Compression=no"
+
+echo -e "\n[ ---- Slave ---- ] Creating signatures ...\n"
+ssh -p $PORT $HOST "sudo sh -s" < ./action signature $SLAVE_CACHE_DIR $SLAVE_DB_DIR $DB_LIST
+
+echo -e "\n[ Master <- Slave ] Downloading signatures ...\n"
+# --bwlimit=128 -> 128KiB -> 1Mbit/s
+rsync -avz --progress --bwlimit=128 $HOST:${SLAVE_CACHE_DIR}/*.sign $MASTER_CACHE_DIR \
+    || exit 1
+
+echo -e "\n[ --- Master ---  ] Creating deltas ...\n"
+./action delta $MASTER_CACHE_DIR $MASTER_DB_DIR $DB_LIST
+
+echo -e "\n[ Master -> Slave ] Uploading deltas ...\n"
+# --bwlimit=128 -> 128KiB -> 1Mbit/s
+rsync -avz --progress --bwlimit=128 $MASTER_CACHE_DIR/*.delta $HOST:${SLAVE_CACHE_DIR} \
+    || exit 1
+
+echo -e "\n[ ---- Slave ---- ] Patching databases ...\n"
+ssh -p $PORT $HOST "sudo sh -s" < ./action patch $SLAVE_CACHE_DIR $SLAVE_DB_DIR $DB_LIST

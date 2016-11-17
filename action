@@ -1,0 +1,74 @@
+#!/bin/sh
+
+ACTION=$1
+CACHE_DIR=$2
+DB_DIR=$3
+shift 3
+DB_LIST=$*
+
+cd $CACHE_DIR || {
+    echo "Error! Cannot change directory to $CACHE_DIR"
+    exit 1
+}
+
+for EACH_DB in $DB_LIST; do
+    DB="$DB_DIR/$EACH_DB"
+
+    [ ! -f $DB ] && {
+        echo "Warning! $DB does not exist"
+        continue
+    }
+
+    file -b $DB | grep -q 'SQLite 3.x database'
+    [ $? -eq 0 ] || {
+        echo "Warning! $DB is not SQLite 3.x database"
+        continue
+    }
+
+    SIGN_FILE="${EACH_DB}.sign"
+    DELTA_FILE="${EACH_DB}.delta"
+
+    case $ACTION in
+        signature)
+            [ ! $DB -nt $SIGN_FILE ] \
+                && [ ! $DB-wal -nt $SIGN_FILE ] \
+                && [ -s $SIGN_FILE ] \
+            && {
+                echo "-> $EACH_DB skipped: database not changed"
+                continue
+            }
+
+            sudo sqlite3-rdiff --rows-per-hash 18 signature $DB $SIGN_FILE;;
+
+        delta)
+            [ ! -s $SIGN_FILE ] && {
+                echo "Warning! $SIGN_FILE does not exist in the source directory or has 0 length."
+                continue
+            }
+
+            [ ! $SIGN_FILE -nt $DELTA_FILE ] \
+                && [ ! $DB -nt $DELTA_FILE ] \
+                && [ -s $DELTA_FILE ] \
+            && {
+                echo "-> $EACH_DB skipped: database not changed and signature not newer than delta"
+                continue
+            }
+
+            sudo sqlite3-rdiff delta $SIGN_FILE $DB $DELTA_FILE;;
+
+        patch)
+           [ ! -f $DELTA_FILE ] && {
+                echo "Warning! $DELTA_FILE does not exist in the cache directory"
+                continue
+            }
+
+            [ ! $DELTA_FILE -nt $SIGN_FILE ] \
+                && [ -f $SIGN_FILE ] \
+            && {
+                echo "-> $EACH_DB skipped: delta is not newer than signature"
+                continue
+            }
+
+            sudo sqlite3-rdiff patch $DB $DELTA_FILE $DB;;
+    esac
+done
