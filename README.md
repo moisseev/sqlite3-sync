@@ -133,7 +133,7 @@ Slave database sizes:
 -        401,408 100%  515.11kB/s    0:00:00 (xfr#3, to-chk=0/3)
  
 +sent 24,291 bytes  received 1,303,001 bytes  115,416.70 bytes/sec
-+total size is 6,377,472  speedup is 4.80
+-total size is 6,377,472  speedup is 4.80
  
  [ --- Master ---  ] Creating deltas ...
  
@@ -163,7 +163,7 @@ Slave database sizes:
 -        172,032 100%  166.34kB/s    0:00:01 (xfr#3, to-chk=0/3)
  
 +sent 886,811 bytes  received 3,247 bytes  104,712.71 bytes/sec
-+total size is 1,757,184  speedup is 1.97
+-total size is 1,757,184  speedup is 1.97
  
  [ ---- Slave ---- ] Patching databases ...
  
